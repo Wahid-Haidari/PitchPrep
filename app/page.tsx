@@ -29,11 +29,11 @@ const features = [
 ];
 
 const steps = [
-  { number: "01", title: "Set Your Goals", description: "Tell us your preferred roles, industries, and background." },
-  { number: "02", title: "Add Companies", description: "Enter companies you want to visit at the career fair." },
-  { number: "03", title: "Get Prioritized", description: "See a ranked list with match scores and recommendations." },
-  { number: "04", title: "Generate Cards", description: "Get personalized pitches and talking points for each company." },
-  { number: "05", title: "Polish Your Resume", description: "Get targeted suggestions to strengthen your resume." },
+    { number: "01", title: "Sign Up"},
+  { number: "02", title: "Set Your Profile"},
+  { number: "03", title: "See Career Fair Companies"},
+  { number: "04", title: "Get Personalized Pitches"},
+  { number: "05", title: "Get HIRED!"},
 ];
 
 export default function Home() {
