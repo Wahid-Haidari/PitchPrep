@@ -4,13 +4,13 @@
 
 > Walk in prepared. Walk out hired.
 
-🌐 **Live Demo:** [https://your-deployed-url.vercel.app](https://your-deployed-url.vercel.app)
+🌐 **Live Demo:** [https://pitch-prep.vercel.app/](https://pitch-prep.vercel.app/)
 
 ---
 
 ## Demo Video
 
-[![PitchPrep Demo](https://img.shields.io/badge/▶%20Watch%20Demo-YouTube-red?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
+[![PitchPrep Demo](https://img.shields.io/badge/▶%20Watch%20Demo-YouTube-red?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=Ejo_T2jquYQ)
 
 <!-- Replace the link above with your actual YouTube URL -->
 
