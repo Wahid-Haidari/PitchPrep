@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, Collections } from "@/lib/db/mongodb";
 import { getAuthUser } from "@/lib/services/auth";
-import { fetchEmployerContext, generatePitch } from "@/lib/services/openai";
-import type { UserProfileData, EmployerContext } from "@/lib/services/openai";
+import { generatePitch } from "@/lib/services/openai";
+import type { UserProfileData } from "@/lib/services/openai";
 import { ObjectId } from "mongodb";
-
-const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 /**
  * POST /api/pitch/generate
@@ -41,6 +39,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Map MongoDB document to UserProfileData for OpenAI prompt
     const userProfile: UserProfileData = {
       name: user.name,
       email: user.email,
@@ -50,50 +49,40 @@ export async function POST(req: NextRequest) {
       preferredRoles: user.profile.preferredRoles || [],
       preferredIndustries: user.profile.preferredIndustries || [],
       location: user.profile.location || "",
+      workAuthorization: user.profile.workAuthorization || user.profile.visaNotes || "",
+      jobTypePreference: user.profile.jobTypePreference || "any",
+      skills: user.profile.skills || [],
       background: user.profile.background || "",
-      resumeText: user.profile.resumeText || "",
+      resumeText: user.resumeText || "", // resumeText is at root level, not in profile
     };
 
-    // 2. Get employer context (from cache or ChatGPT)
-    const contextsCol = db.collection(Collections.EMPLOYER_CONTEXTS);
-    const normalizedName = companyName.toLowerCase().trim();
-    let employerContext: EmployerContext;
+    // 2. Generate the pitch using new consolidated prompt
+    const pitchResult = await generatePitch(userProfile, companyName);
 
-    const cached = await contextsCol.findOne({ companyName: normalizedName });
-
-    if (cached && Date.now() - cached.updatedAt.getTime() < CACHE_TTL_MS) {
-      employerContext = cached.context;
-    } else {
-      // Fetch from ChatGPT and cache
-      employerContext = await fetchEmployerContext(companyName);
-      await contextsCol.updateOne(
-        { companyName: normalizedName },
-        {
-          $set: {
-            companyName: normalizedName,
-            displayName: companyName,
-            context: employerContext,
-            updatedAt: new Date(),
-          },
-          $setOnInsert: { createdAt: new Date() },
-        },
-        { upsert: true }
-      );
-    }
-
-    // 3. Generate the pitch
-    const pitchResult = await generatePitch(userProfile, employerContext, companyName);
-
-    // 4. Build a CareerFairCard response matching the frontend type
+    // 3. Build a CareerFairCard response matching the frontend type
     const careerFairCard = {
-      pitch: pitchResult.pitch,
-      wowFacts: pitchResult.wowFacts,
+      pitch: pitchResult.elevatorPitch30s,
+      wowFacts: pitchResult.interestingFacts.map((fact) => ({
+        fact,
+        source: "AI Generated",
+        sourceUrl: "#"
+      })),
       topRoles: pitchResult.topMatchedRoles,
       smartQuestions: pitchResult.smartQuestions,
-      followUpMessage: pitchResult.followUpMessage,
+      followUpMessage: `Hi [Name], it was great meeting you at the career fair! I really enjoyed learning about ${companyName}. I'd love to continue our conversation — would you be open to a brief virtual coffee chat? I've attached my resume for reference. Best, ${user.name}`,
     };
 
-    // 5. If companyId was provided, update the company record
+    // Create detailed match reasoning from scoreBreakdown
+    const matchReasoning = [
+      `Location: ${pitchResult.scoreBreakdown.location.score}/20 - ${pitchResult.scoreBreakdown.location.reason}`,
+      `Work Auth: ${pitchResult.scoreBreakdown.workAuthorization.score}/20 - ${pitchResult.scoreBreakdown.workAuthorization.reason}`,
+      `Major: ${pitchResult.scoreBreakdown.major.score}/20 - ${pitchResult.scoreBreakdown.major.reason}`,
+      `Job Type: ${pitchResult.scoreBreakdown.jobType.score}/20 - ${pitchResult.scoreBreakdown.jobType.reason}`,
+      `Skills: ${pitchResult.scoreBreakdown.skills.score}/20 - ${pitchResult.scoreBreakdown.skills.reason}`,
+      `Resume: ${pitchResult.scoreBreakdown.resume.score}/20 - ${pitchResult.scoreBreakdown.resume.reason}`
+    ].join(" | ");
+
+    // 4. If companyId was provided, update the company record
     if (companyId) {
       await db.collection(Collections.COMPANIES).updateOne(
         { id: companyId },
@@ -101,19 +90,15 @@ export async function POST(req: NextRequest) {
           $set: {
             careerFairCard,
             matchScore: pitchResult.matchScore,
-            matchReasoning: pitchResult.matchReasoning,
+            matchReasoning,
             generated: true,
-            aboutInfo:
-              (
-                await db.collection(Collections.COMPANIES).findOne({ id: companyId })
-              )?.aboutInfo || employerContext.whatTheyDo,
             updatedAt: new Date(),
           },
         }
       );
     }
 
-    // 6. Save pitch record for history
+    // 5. Save pitch record for history
     await db.collection(Collections.PITCHES).insertOne({
       userId: authUser.userId,
       companyName,
@@ -126,8 +111,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       careerFairCard,
       matchScore: pitchResult.matchScore,
-      matchReasoning: pitchResult.matchReasoning,
-      employerContext,
+      matchReasoning,
+      scoreBreakdown: pitchResult.scoreBreakdown,
     });
   } catch (error) {
     console.error("Pitch generation error:", error);

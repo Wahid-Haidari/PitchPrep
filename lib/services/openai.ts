@@ -52,9 +52,61 @@ Be factual and specific. Use real, verifiable information. If uncertain about a 
  */
 export async function generatePitch(
   userProfile: UserProfileData,
-  companyContext: EmployerContext,
   companyName: string
 ): Promise<PitchResult> {
+  const systemPrompt = `You are an expert career coach. Generate a personalized elevator pitch and analysis for a job seeker.
+
+CONSTRAINTS:
+- Return ONLY valid JSON matching the exact schema provided
+- No extra keys, no URLs, no fabricated "recent projects" unless explicitly known
+- elevatorPitch30s: ~75-95 words, natural conversational tone, no buzzwords
+- interestingFacts: exactly 3, short and safe (no fake links)
+- smartQuestions: exactly 3, specific to company + role track
+- topMatchedRoles: exactly 3 relevant roles
+- Each score category: 0-20 integer, with 1 short sentence reason
+- matchScore: sum of all 6 category scores (0-120 total)
+- If uncertain about company details, keep facts general but truthful`;
+
+  const userPrompt = `USER INFORMATION & PREFERENCES:
+- Location Preference: ${userProfile.location || "Not specified"}
+- Work Authorization: ${userProfile.workAuthorization || "Not specified"}
+- Major: ${userProfile.major}
+- Job Type Preference: ${userProfile.jobTypePreference || "Not specified"}
+- Skills: ${userProfile.skills?.join(", ") || "Not specified"}
+- Resume (truncated): ${userProfile.resumeText?.substring(0, 1500) || "Not provided"}
+
+COMPANY:
+- Company Name: ${companyName}
+
+REQUIRED OUTPUT FORMAT (JSON):
+{
+  "companyName": "string",
+  "elevatorPitch30s": "string",
+  "interestingFacts": ["string", "string", "string"],
+  "smartQuestions": ["string", "string", "string"],
+  "topMatchedRoles": ["string", "string", "string"],
+  "scoreBreakdown": {
+    "location": { "score": 0, "reason": "string" },
+    "workAuthorization": { "score": 0, "reason": "string" },
+    "major": { "score": 0, "reason": "string" },
+    "jobType": { "score": 0, "reason": "string" },
+    "skills": { "score": 0, "reason": "string" },
+    "resume": { "score": 0, "reason": "string" }
+  },
+  "matchScore": 0
+}`;
+
+  // Log the prompts for debugging
+  console.log("\n" + "=".repeat(80));
+  console.log("📤 OPENAI API REQUEST - SYSTEM PROMPT");
+  console.log("=".repeat(80));
+  console.log(systemPrompt);
+  console.log("\n" + "=".repeat(80));
+  console.log("📤 OPENAI API REQUEST - USER PROMPT");
+  console.log("=".repeat(80));
+  console.log(userPrompt);
+  console.log("=".repeat(80) + "\n");
+
   const response = await openai.chat.completions.create({
     model: MODEL,
     temperature: 0.8,
@@ -62,54 +114,11 @@ export async function generatePitch(
     messages: [
       {
         role: "system",
-        content: `You are an expert career coach. Generate a personalized elevator pitch for a job seeker to deliver at a career fair booth.
-
-CONSTRAINTS:
-- The pitch must be 20-25 seconds when spoken (roughly 50-70 words)
-- Conversational and confident tone — sounds like a real person, not a script
-- NO buzzwords, NO generic phrases like "I'm passionate about synergies"
-- Reference SPECIFIC things about the company (recent projects, products, mission)
-- Highlight the STRONGEST overlaps between the user's profile and the company's needs
-- The pitch should feel natural, like the person rehearsed it but it flows spontaneously
-
-Also generate:
-- 3 smart questions to ask at the booth
-- A follow-up email template
-- Top 3 matching roles (from the company's typical roles)
-- Match score (0-100) with reasoning
-
-Return JSON:
-{
-  "pitch": "string — the 20-25 second elevator pitch",
-  "matchScore": number,
-  "matchReasoning": "string — 2 sentences explaining the match",
-  "smartQuestions": ["string — 3 thoughtful questions"],
-  "followUpMessage": "string — short follow-up email template",
-  "topMatchedRoles": ["string — top 3 roles that match"],
-  "wowFacts": [{"fact": "string", "source": "string", "sourceUrl": "string"} — 3 facts to mention]
-}`,
+        content: systemPrompt,
       },
       {
         role: "user",
-        content: `USER PROFILE:
-Name: ${userProfile.name}
-Major: ${userProfile.major}
-School: ${userProfile.school}
-Graduation Year: ${userProfile.graduationYear}
-Preferred Roles: ${userProfile.preferredRoles.join(", ")}
-Preferred Industries: ${userProfile.preferredIndustries.join(", ")}
-Skills/Background: ${userProfile.background}
-Resume Summary: ${userProfile.resumeText?.substring(0, 1500) || "Not provided"}
-
-COMPANY CONTEXT (${companyName}):
-What they do: ${companyContext.whatTheyDo}
-Recent projects: ${companyContext.recentProjectsAndProducts.join("; ")}
-Skills they value: ${companyContext.valuedSkills.join(", ")}
-Typical roles: ${companyContext.typicalRoles.join(", ")}
-Culture/Mission: ${companyContext.cultureMission}
-Wow facts: ${companyContext.wowFacts.map((f) => f.fact).join("; ")}
-
-Generate a personalized pitch for this user to deliver at the ${companyName} booth.`,
+        content: userPrompt,
       },
     ],
   });
@@ -118,6 +127,13 @@ Generate a personalized pitch for this user to deliver at the ${companyName} boo
   if (!content) {
     throw new Error("Empty response from OpenAI");
   }
+
+  // Log the response for debugging
+  console.log("\n" + "=".repeat(80));
+  console.log("📥 OPENAI API RESPONSE - RAW JSON");
+  console.log("=".repeat(80));
+  console.log(content);
+  console.log("=".repeat(80) + "\n");
 
   return JSON.parse(content) as PitchResult;
 }
@@ -193,18 +209,28 @@ export interface UserProfileData {
   preferredRoles: string[];
   preferredIndustries: string[];
   location: string;
+  workAuthorization?: string;
+  jobTypePreference?: string;
+  skills?: string[];
   background: string;
   resumeText: string;
 }
 
 export interface PitchResult {
-  pitch: string;
-  matchScore: number;
-  matchReasoning: string;
+  companyName: string;
+  elevatorPitch30s: string;
+  interestingFacts: string[];
   smartQuestions: string[];
-  followUpMessage: string;
   topMatchedRoles: string[];
-  wowFacts: { fact: string; source: string; sourceUrl: string }[];
+  scoreBreakdown: {
+    location: { score: number; reason: string };
+    workAuthorization: { score: number; reason: string };
+    major: { score: number; reason: string };
+    jobType: { score: number; reason: string };
+    skills: { score: number; reason: string };
+    resume: { score: number; reason: string };
+  };
+  matchScore: number;
 }
 
 export interface ResumeSuggestionResult {

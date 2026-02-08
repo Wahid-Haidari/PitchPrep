@@ -34,9 +34,14 @@ export async function GET(req: NextRequest) {
         preferredRoles: user.profile?.preferredRoles || [],
         preferredIndustries: user.profile?.preferredIndustries || [],
         location: user.profile?.location || "",
+        workAuthorization: user.profile?.workAuthorization || user.profile?.visaNotes || "",
+        jobTypePreference: user.profile?.jobTypePreference || "",
+        skills: user.profile?.skills || [],
         visaNotes: user.profile?.visaNotes || "",
         background: user.profile?.background || "",
-        resumeText: user.profile?.resumeText || "",
+        resumeText: user.resumeText || "", // resumeText is at root level
+        resumeUploadDate: user.resumeUploadDate || null,
+        resumeFilename: user.resumeFilename || "",
       },
     });
   } catch (error) {
@@ -62,6 +67,9 @@ export async function PUT(req: NextRequest) {
       preferredRoles,
       preferredIndustries,
       location,
+      workAuthorization,
+      jobTypePreference,
+      skills,
       visaNotes,
       background,
       resumeText,
@@ -74,6 +82,13 @@ export async function PUT(req: NextRequest) {
     };
 
     if (name !== undefined) updateFields.name = name;
+    
+    // Resume fields at root level
+    if (resumeText !== undefined) {
+      updateFields.resumeText = resumeText;
+      updateFields.resumeUploadDate = new Date();
+      updateFields.resumeFilename = "manual_input";
+    }
 
     // Profile sub-document
     const profileUpdate: Record<string, unknown> = {};
@@ -83,9 +98,11 @@ export async function PUT(req: NextRequest) {
     if (preferredRoles !== undefined) profileUpdate["profile.preferredRoles"] = preferredRoles;
     if (preferredIndustries !== undefined) profileUpdate["profile.preferredIndustries"] = preferredIndustries;
     if (location !== undefined) profileUpdate["profile.location"] = location;
+    if (workAuthorization !== undefined) profileUpdate["profile.workAuthorization"] = workAuthorization;
+    if (jobTypePreference !== undefined) profileUpdate["profile.jobTypePreference"] = jobTypePreference;
+    if (skills !== undefined) profileUpdate["profile.skills"] = skills;
     if (visaNotes !== undefined) profileUpdate["profile.visaNotes"] = visaNotes;
     if (background !== undefined) profileUpdate["profile.background"] = background;
-    if (resumeText !== undefined) profileUpdate["profile.resumeText"] = resumeText;
 
     await db.collection(Collections.USERS).updateOne(
       { _id: new ObjectId(authUser.userId) },

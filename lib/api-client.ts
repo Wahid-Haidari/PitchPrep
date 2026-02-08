@@ -88,6 +88,51 @@ export const authApi = {
   },
 };
 
+// ---------- Resume ----------
+
+export interface ResumeUploadResponse {
+  success: boolean;
+  message: string;
+  textLength: number;
+  preview: string;
+}
+
+export const resumeApi = {
+  async uploadResume(file: File): Promise<ResumeUploadResponse> {
+    const formData = new FormData();
+    formData.append("resume", file);
+    
+    const token = getToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`${API_BASE}/resume/upload`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new ApiError(res.status, body.error || "Upload failed");
+    }
+
+    return res.json();
+  },
+
+  async getSuggestions(
+    resumeText: string,
+    jobDescription: string
+  ): Promise<{ suggestions: ResumeSuggestion[] }> {
+    return apiFetch("/resume/suggestions", {
+      method: "POST",
+      body: JSON.stringify({ resumeText, jobDescription }),
+    });
+  },
+};
+
 // ---------- User Profile ----------
 
 import type { UserProfile } from "@/lib/types";
@@ -229,15 +274,3 @@ export const pitchApi = {
 // ---------- Resume Suggestions ----------
 
 import type { ResumeSuggestion } from "@/lib/types";
-
-export const resumeApi = {
-  async getSuggestions(
-    resumeText: string,
-    jobDescription: string
-  ): Promise<{ suggestions: ResumeSuggestion[] }> {
-    return apiFetch("/resume/suggestions", {
-      method: "POST",
-      body: JSON.stringify({ resumeText, jobDescription }),
-    });
-  },
-};

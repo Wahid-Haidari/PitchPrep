@@ -11,6 +11,7 @@ import Textarea from "@/components/ui/Textarea";
 import Button from "@/components/ui/Button";
 import Card, { CardTitle } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
+import { resumeApi } from "@/lib/api-client";
 
 const allCategories: Category[] = ["Tech", "Finance", "Healthcare", "Consulting", "Other"];
 const allRoles = ["Software Engineer", "Product Manager", "Data Scientist", "Business Analyst", "Consultant", "Designer", "Quantitative Analyst", "Research Scientist"];
@@ -28,6 +29,11 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile>(defaultProfile);
   const [saved, setSaved] = useState(false);
   const [newRole, setNewRole] = useState("");
+  const [uploadStatus, setUploadStatus] = useState<{
+    uploading: boolean;
+    error: string | null;
+    success: string | null;
+  }>({ uploading: false, error: null, success: null });
 
   const handleSave = () => {
     setSaved(true);
@@ -56,6 +62,47 @@ export default function ProfilePage() {
     if (newRole.trim() && !profile.preferredRoles.includes(newRole.trim())) {
       setProfile((p) => ({ ...p, preferredRoles: [...p.preferredRoles, newRole.trim()] }));
       setNewRole("");
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadStatus({ uploading: true, error: null, success: null });
+
+    try {
+      const result = await resumeApi.uploadResume(file);
+      if (result.success) {
+        setProfile(prev => ({ ...prev, resumeText: result.preview.replace("...", "") }));
+        setUploadStatus({ 
+          uploading: false, 
+          error: null, 
+          success: `Resume uploaded successfully! Extracted ${result.textLength} characters.` 
+        });
+      } else {
+        // Handle the 501 "not implemented" case gracefully
+        setUploadStatus({ 
+          uploading: false, 
+          error: null,
+          success: null
+        });
+      }
+    } catch (error: any) {
+      // Show info message for not-yet-implemented feature
+      if (error.status === 501) {
+        setUploadStatus({ 
+          uploading: false, 
+          error: null,
+          success: "PDF upload is coming soon! For now, please copy and paste your resume text in the area below." 
+        });
+      } else {
+        setUploadStatus({ 
+          uploading: false, 
+          error: error.message || "Failed to upload resume", 
+          success: null 
+        });
+      }
     }
   };
 
@@ -172,8 +219,52 @@ export default function ProfilePage() {
         {/* Resume */}
         <Card>
           <CardTitle className="mb-4">Resume Text</CardTitle>
+          
+          {/* PDF Upload */}
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+            <h3 className="text-sm font-medium mb-2">Upload PDF Resume</h3>
+            <p className="text-xs text-muted mb-3">Upload a PDF file to automatically extract your resume text</p>
+            
+            <div className="flex items-center gap-3">
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={handleFileUpload}
+                disabled={uploadStatus.uploading}
+                className="hidden"
+                id="resume-upload"
+              />
+              <label
+                htmlFor="resume-upload"
+                className={`cursor-pointer px-4 py-2 text-sm font-medium border rounded-md transition-colors ${
+                  uploadStatus.uploading
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                {uploadStatus.uploading ? "Uploading..." : "Choose PDF File"}
+              </label>
+              
+              {uploadStatus.uploading && (
+                <div className="text-sm text-blue-600">Processing PDF...</div>
+              )}
+            </div>
+            
+            {uploadStatus.error && (
+              <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+                ❌ {uploadStatus.error}
+              </div>
+            )}
+            
+            {uploadStatus.success && (
+              <div className="mt-2 text-sm text-green-600 bg-green-50 p-2 rounded">
+                ✅ {uploadStatus.success}
+              </div>
+            )}
+          </div>
+          
           <Textarea
-            label="Paste your resume"
+            label="Or paste your resume manually"
             placeholder="Paste your resume text here for analysis..."
             value={profile.resumeText}
             onChange={(e) => setProfile({ ...profile, resumeText: e.target.value })}
