@@ -58,7 +58,8 @@ export interface UserProfile {
   major: string;
   graduationYear: string;
   preferredRoles: string[];
-  preferredIndustries: Category[];
+  preferredIndustries: string[];
+  skills: string[];
   location: string;
   visaNotes: string;
   background: string;

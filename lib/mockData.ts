@@ -339,6 +339,7 @@ export const defaultProfile: UserProfile = {
   graduationYear: "2026",
   preferredRoles: ["Software Engineer", "Product Manager", "Data Scientist", "Business Analyst"],
   preferredIndustries: ["Tech", "Finance"],
+  skills: ["Python", "JavaScript", "React", "Node.js", "SQL", "Machine Learning"],
   location: "New York, NY",
   visaNotes: "US Citizen – no sponsorship required",
   background: "I interned in finance at a mid-size bank and have done two software engineering internships at startups. I've taken coursework in ML, distributed systems, and business strategy.",

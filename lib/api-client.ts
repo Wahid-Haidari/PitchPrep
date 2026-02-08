@@ -137,6 +137,19 @@ export const resumeApi = {
 
 import type { UserProfile } from "@/lib/types";
 
+export interface ResumeAnalysis {
+  name: string;
+  email: string;
+  school: string;
+  major: string;
+  graduationYear: string;
+  location: string;
+  preferredRoles: string[];
+  preferredIndustries: string[];
+  background: string;
+  skills: string[];
+}
+
 export const userApi = {
   async getProfile(): Promise<{ profile: UserProfile }> {
     return apiFetch("/users/profile");
@@ -146,6 +159,13 @@ export const userApi = {
     await apiFetch("/users/profile", {
       method: "PUT",
       body: JSON.stringify(data),
+    });
+  },
+
+  async analyzeResume(resumeText: string): Promise<{ analysis: ResumeAnalysis }> {
+    return apiFetch("/users/resume/analyze", {
+      method: "POST",
+      body: JSON.stringify({ resumeText }),
     });
   },
 };
