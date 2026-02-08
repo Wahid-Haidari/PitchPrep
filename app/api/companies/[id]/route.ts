@@ -18,10 +18,14 @@ export async function GET(
       if (!bySlug) {
         return NextResponse.json({ error: "Company not found" }, { status: 404 });
       }
-      return NextResponse.json({ company: { ...bySlug, _id: undefined } });
+      const { _id, ...rest } = bySlug;
+      console.log(`✅ [GET /api/companies/${id}] Found by slug, has careerFairCard:`, !!rest.careerFairCard);
+      return NextResponse.json({ company: rest });
     }
 
-    return NextResponse.json({ company: { ...company, _id: undefined } });
+    const { _id, ...rest } = company;
+    console.log(`✅ [GET /api/companies/${id}] Found by id, has careerFairCard:`, !!rest.careerFairCard);
+    return NextResponse.json({ company: rest });
   } catch (error) {
     console.error("Get company error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

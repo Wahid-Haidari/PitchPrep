@@ -279,7 +279,14 @@ export interface PitchGenerateResponse {
   careerFairCard: CareerFairCard;
   matchScore: number;
   matchReasoning: string;
-  employerContext: EmployerContext;
+  scoreBreakdown?: {
+    location: { score: number; reason: string };
+    workAuthorization: { score: number; reason: string };
+    major: { score: number; reason: string };
+    jobType: { score: number; reason: string };
+    skills: { score: number; reason: string };
+    resume: { score: number; reason: string };
+  };
 }
 
 export const pitchApi = {

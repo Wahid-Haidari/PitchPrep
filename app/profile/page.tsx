@@ -65,9 +65,13 @@ export default function ProfilePage() {
       await userApi.updateProfile(profile);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save profile:", error);
-      alert("Failed to save profile. Please try again.");
+      if (error?.status === 404 || error?.status === 401) {
+        alert("Your session has expired. Please log out and log back in.");
+      } else {
+        alert("Failed to save profile. Please try again.");
+      }
     } finally {
       setSaving(false);
     }

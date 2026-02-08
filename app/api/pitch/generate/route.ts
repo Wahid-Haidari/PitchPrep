@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { companyName, companyId } = await req.json();
+    console.log(`📤 POST /api/pitch/generate — companyName: ${companyName}, companyId: ${companyId}, userId: ${authUser.userId}`);
 
     if (!companyName) {
       return NextResponse.json({ error: "companyName is required" }, { status: 400 });
@@ -40,24 +41,31 @@ export async function POST(req: NextRequest) {
     }
 
     // Map MongoDB document to UserProfileData for OpenAI prompt
+    const p = user.profile || {};
     const userProfile: UserProfileData = {
       name: user.name,
       email: user.email,
-      school: user.profile.school || "",
-      major: user.profile.major || "",
-      graduationYear: user.profile.graduationYear || "",
-      preferredRoles: user.profile.preferredRoles || [],
-      preferredIndustries: user.profile.preferredIndustries || [],
-      location: user.profile.location || "",
-      workAuthorization: user.profile.workAuthorization || user.profile.visaNotes || "",
-      jobTypePreference: user.profile.jobTypePreference || "any",
-      skills: user.profile.skills || [],
-      background: user.profile.background || "",
-      resumeText: user.resumeText || "", // resumeText is at root level, not in profile
+      school: p.school || "",
+      major: p.major || "",
+      graduationYear: p.graduationYear || "",
+      preferredRoles: p.preferredRoles || [],
+      preferredIndustries: p.preferredIndustries || [],
+      location: p.location || "",
+      workAuthorization: p.workAuthorization || p.visaNotes || "",
+      jobTypePreference: p.jobTypePreference || "any",
+      skills: p.skills || [],
+      background: p.background || "",
+      resumeText: p.resumeText || user.resumeText || "",
     };
 
-    // 2. Generate the pitch using new consolidated prompt
-    const pitchResult = await generatePitch(userProfile, companyName);
+    // 2. Fetch employer context (company research) using OpenAI
+    console.log(`📚 Fetching employer context for ${companyName}...`);
+    const { fetchEmployerContext } = await import("@/lib/services/openai");
+    const employerContext = await fetchEmployerContext(companyName);
+    console.log(`✅ Employer context fetched:`, employerContext);
+
+    // 3. Generate the pitch using consolidated prompt with employer context
+    const pitchResult = await generatePitch(userProfile, companyName, employerContext);
 
     // 3. Build a CareerFairCard response matching the frontend type
     const careerFairCard = {
@@ -84,7 +92,8 @@ export async function POST(req: NextRequest) {
 
     // 4. If companyId was provided, update the company record
     if (companyId) {
-      await db.collection(Collections.COMPANIES).updateOne(
+      console.log(`🔄 Updating company ${companyId} in MongoDB...`);
+      const updateResult = await db.collection(Collections.COMPANIES).updateOne(
         { id: companyId },
         {
           $set: {
@@ -96,6 +105,7 @@ export async function POST(req: NextRequest) {
           },
         }
       );
+      console.log(`✅ Company update result: matched=${updateResult.matchedCount}, modified=${updateResult.modifiedCount}`);
     }
 
     // 5. Save pitch record for history

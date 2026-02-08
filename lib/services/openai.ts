@@ -52,7 +52,8 @@ Be factual and specific. Use real, verifiable information. If uncertain about a 
  */
 export async function generatePitch(
   userProfile: UserProfileData,
-  companyName: string
+  companyName: string,
+  employerContext?: EmployerContext
 ): Promise<PitchResult> {
   const systemPrompt = `You are an expert career coach. Generate a personalized elevator pitch and analysis for a job seeker.
 
@@ -67,6 +68,19 @@ CONSTRAINTS:
 - matchScore: sum of all 6 category scores (0-120 total)
 - If uncertain about company details, keep facts general but truthful`;
 
+  // Build company context section
+  let companyContext = `COMPANY:\n- Company Name: ${companyName}`;
+  if (employerContext) {
+    companyContext += `
+- What They Do: ${employerContext.whatTheyDo}
+- Industry: ${employerContext.industryCategory}
+- Location: ${employerContext.headquarters}
+- Valued Skills: ${employerContext.valuedSkills?.join(", ")}
+- Typical Roles: ${employerContext.typicalRoles?.join(", ")}
+- Culture & Mission: ${employerContext.cultureMission}
+- Recent Projects: ${employerContext.recentProjectsAndProducts?.join(", ")}`;
+  }
+
   const userPrompt = `USER INFORMATION & PREFERENCES:
 - Location Preference: ${userProfile.location || "Not specified"}
 - Work Authorization: ${userProfile.workAuthorization || "Not specified"}
@@ -75,8 +89,7 @@ CONSTRAINTS:
 - Skills: ${userProfile.skills?.join(", ") || "Not specified"}
 - Resume (truncated): ${userProfile.resumeText?.substring(0, 1500) || "Not provided"}
 
-COMPANY:
-- Company Name: ${companyName}
+${companyContext}
 
 REQUIRED OUTPUT FORMAT (JSON):
 {

@@ -3,30 +3,58 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { companyApi } from "@/lib/api-client";
+import { companyApi, pitchApi } from "@/lib/api-client";
 import { Company } from "@/lib/types";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { CategoryBadge, ScoreBadge } from "@/components/ui/Badge";
-import CareerFairCard from "@/components/domain/CareerFairCard";
 
 export default function CompanyDetailPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string;
   
+  console.log(`🎬 [Company Page] Component mounted/updated with slug: ${slug}`);
+  
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
-    async function fetchCompany() {
+    async function fetchCompanyAndGenerate() {
       try {
+        console.log(`🔍 [Company Page] Starting fetch for slug: ${slug}`);
         setLoading(true);
         setError(null);
         const response = await companyApi.get(slug);
-        setCompany(response.company);
+        let comp = response.company;
+        console.log(`✅ [Company Page] Fetched company:`, comp);
+        setCompany(comp);
+
+        // ALWAYS generate fresh pitch when visiting company page
+        console.log(`🚀 [Company Page] Generating fresh pitch for ${comp.name} (id: ${comp.id})`);
+        setGenerating(true);
+        try {
+          // Pass companyId so it saves to MongoDB
+          const result = await pitchApi.generate(comp.name, comp.id);
+          comp = {
+            ...comp,
+            careerFairCard: result.careerFairCard,
+            matchScore: result.matchScore,
+            matchReasoning: result.matchReasoning,
+            generated: true,
+          };
+          setCompany(comp);
+          console.log("✅ Pitch generated and saved:", result);
+        } catch (genErr: any) {
+          console.error("❌ Pitch generation error:", genErr);
+          setError(genErr.message || "Failed to generate pitch. Please complete your profile first.");
+          // Not fatal — page still shows company info without AI content
+        } finally {
+          setGenerating(false);
+        }
       } catch (err) {
         console.error("Error fetching company:", err);
         setError("Company not found");
@@ -34,9 +62,9 @@ export default function CompanyDetailPage() {
         setLoading(false);
       }
     }
-    
+
     if (slug) {
-      fetchCompany();
+      fetchCompanyAndGenerate();
     }
   }, [slug]);
 
@@ -177,12 +205,121 @@ export default function CompanyDetailPage() {
         </Card>
       )}
 
-      {/* Career Fair Card Section */}
+      {/* Career Fair Preparation */}
       <div className="mt-8">
-        <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-          🎯 Career Fair Preparation
-        </h2>
-        <CareerFairCard company={company} />
+        <div className="flex items-start justify-between mb-4">
+          <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+            🎯 Career Fair Preparation
+          </h2>
+          {company.careerFairCard && (
+            <div className="text-xs text-muted italic flex items-center gap-1">
+              <span>✨</span>
+              <span>AI-generated using your profile</span>
+            </div>
+          )}
+        </div>
+
+        {generating && (
+          <Card className="text-center py-12">
+            <div className="animate-pulse text-4xl mb-3">✨</div>
+            <p className="text-sm text-muted mb-2">Generating personalized insights with AI...</p>
+            <p className="text-xs text-muted">This may take 10-15 seconds</p>
+          </Card>
+        )}
+
+        {!generating && company.careerFairCard && (
+          <div className="space-y-5">
+            {/* Elevator Pitch */}
+            <Card>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  🎤 Your 30-Second Pitch
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(company.careerFairCard!.pitch);
+                  }}
+                >
+                  📋 Copy
+                </Button>
+              </div>
+              <p className="text-sm text-foreground leading-relaxed bg-primary-light rounded-lg p-4 border border-primary/10">
+                {company.careerFairCard.pitch}
+              </p>
+            </Card>
+
+            {/* Key Talking Points */}
+            <Card>
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+                🌟 Key Talking Points
+              </h3>
+              <ul className="space-y-3">
+                {company.careerFairCard.wowFacts.map((fact, index) => (
+                  <li key={index} className="flex items-start gap-3 text-sm">
+                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600 text-xs font-semibold">
+                      {index + 1}
+                    </span>
+                    <p className="text-foreground">{fact.fact}</p>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+
+            {/* Top Roles to Ask About */}
+            <Card>
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+                💼 Top Roles to Ask About
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {company.careerFairCard.topRoles.map((role) => (
+                  <span key={role} className="rounded-lg bg-secondary px-3 py-1.5 text-sm font-medium text-foreground">
+                    {role}
+                  </span>
+                ))}
+              </div>
+            </Card>
+
+            {/* Smart Questions */}
+            <Card>
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+                ❓ Smart Questions to Ask
+              </h3>
+              <ol className="space-y-2">
+                {company.careerFairCard.smartQuestions.map((q, index) => (
+                  <li key={index} className="flex items-start gap-3 text-sm">
+                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600 text-xs font-semibold">
+                      {index + 1}
+                    </span>
+                    <p className="text-foreground">{q}</p>
+                  </li>
+                ))}
+              </ol>
+            </Card>
+
+            {/* Follow-Up Message */}
+            <Card>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  ✉️ Follow-Up Message
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(company.careerFairCard!.followUpMessage);
+                  }}
+                >
+                  📋 Copy
+                </Button>
+              </div>
+              <p className="text-sm text-foreground leading-relaxed bg-emerald-50 rounded-lg p-4 border border-emerald-100">
+                {company.careerFairCard.followUpMessage}
+              </p>
+            </Card>
+          </div>
+        )}
       </div>
     </Container>
   );

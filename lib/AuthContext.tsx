@@ -37,8 +37,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(authUser);
             localStorage.setItem("pitchprep_user", JSON.stringify(authUser));
           } catch {
-            // Token expired or invalid — fall back to stored
-            setUser(JSON.parse(stored));
+            // Token expired or invalid — clear stale session
+            localStorage.removeItem("pitchprep_user");
+            localStorage.removeItem("pitchprep_token");
+            setUser(null);
           }
         }
       } catch {
