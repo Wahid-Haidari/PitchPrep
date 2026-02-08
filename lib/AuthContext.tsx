@@ -8,6 +8,7 @@ interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
   login: (email: string, password: string, role: UserRole) => Promise<boolean>;
+  register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isAdmin: boolean;
   isAuthenticated: boolean;
@@ -67,6 +68,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+
+  const register = useCallback(async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { user: serverUser } = await authApi.register(email, password, name);
+      const authUser: AuthUser = {
+        email: serverUser.email,
+        name: serverUser.name,
+        role: serverUser.role as UserRole,
+      };
+      setUser(authUser);
+      localStorage.setItem("pitchprep_user", JSON.stringify(authUser));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message || "Registration failed" };
+    }
+  }, []);
+
   const logout = useCallback(() => {
     setUser(null);
     authApi.logout();
@@ -79,6 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isLoading,
         login,
+        register,
         logout,
         isAdmin: user?.role === "admin",
         isAuthenticated: !!user,

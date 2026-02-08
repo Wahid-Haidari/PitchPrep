@@ -14,6 +14,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const userRole: UserRole = "user";
+
     const db = await getDb();
     const existing = await db.collection(Collections.USERS).findOne({ email });
 
@@ -22,7 +24,6 @@ export async function POST(req: NextRequest) {
     }
 
     const passwordHash = await hashPassword(password);
-    const userRole: UserRole = role === "admin" ? "admin" : "user";
 
     const result = await db.collection(Collections.USERS).insertOne({
       email,

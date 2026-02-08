@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "setup-schema": "npx tsx lib/db/setup-schema.ts",
-    "seed": "npx tsx lib/db/seed.ts"
+    "seed": "npx tsx lib/db/seed.ts",
+    "test:register": "npx tsx test-register.ts",
+    "test:pitch": "npx tsx test-pitch.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

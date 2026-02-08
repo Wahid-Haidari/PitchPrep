@@ -122,7 +122,18 @@ export default function LoginPage() {
           </form>
         </Card>
 
-        {/* Demo credentials hint removed per request */}
+        {/* Sign up link - only for users, not admin */}
+        {role === "user" && (
+          <div className="mt-6 text-center text-sm">
+            <span className="text-muted">Don&apos;t have an account? </span>
+            <a
+              href="/register"
+              className="text-primary font-semibold hover:underline"
+            >
+              Sign up
+            </a>
+          </div>
+        )}
       </div>
     </Container>
   );
