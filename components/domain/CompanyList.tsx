@@ -18,7 +18,9 @@ export default function CompanyList({ companies, selectedId, onSelect, filters, 
     .filter((c) => {
       if (filters.search && !c.name.toLowerCase().includes(filters.search.toLowerCase())) return false;
       if (filters.industry !== "All" && c.category !== filters.industry) return false;
-      if (c.matchScore < filters.matchScoreMin || c.matchScore > filters.matchScoreMax) return false;
+      // Convert matchScore from 0-120 to 0-100 percentage for filtering
+      const matchPercentage = Math.round((c.matchScore / 120) * 100);
+      if (matchPercentage < filters.matchScoreMin || matchPercentage > filters.matchScoreMax) return false;
       if (filters.location && filters.location !== "All" && c.location !== filters.location) return false;
       if (filters.hiringNow === true && !c.hiringNow) return false;
       return true;

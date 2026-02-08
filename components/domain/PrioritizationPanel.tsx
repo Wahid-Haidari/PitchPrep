@@ -68,16 +68,16 @@ export default function PrioritizationPanel({ companies, activeCategory }: Prior
                         strokeWidth="3"
                       />
                       <path
-                        className={company.matchScore >= 85 ? "text-success" : company.matchScore >= 70 ? "text-warning" : "text-muted"}
+                        className={Math.round((company.matchScore / 120) * 100) >= 85 ? "text-success" : Math.round((company.matchScore / 120) * 100) >= 70 ? "text-warning" : "text-muted"}
                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="3"
-                        strokeDasharray={`${company.matchScore}, 100`}
+                        strokeDasharray={`${Math.round((company.matchScore / 120) * 100)}, 100`}
                       />
                     </svg>
                     <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">
-                      {company.matchScore}
+                      {Math.round((company.matchScore / 120) * 100)}
                     </span>
                   </div>
                 </div>

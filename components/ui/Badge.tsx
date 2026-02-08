@@ -39,6 +39,11 @@ export function CategoryBadge({ category }: { category: Category }) {
 }
 
 export function ScoreBadge({ score }: { score: number }) {
-  const variant = score >= 85 ? "success" : score >= 70 ? "warning" : "default";
-  return <Badge variant={variant}>{score}% Match</Badge>;
+  // Don't render anything if score is missing or zero
+  if (!score || score === 0) return null;
+  
+  // Convert score from 0-120 scale to 0-100 percentage
+  const percentage = Math.round((score / 120) * 100);
+  const variant = percentage >= 85 ? "success" : percentage >= 70 ? "warning" : "default";
+  return <Badge variant={variant}>{percentage}% Match</Badge>;
 }

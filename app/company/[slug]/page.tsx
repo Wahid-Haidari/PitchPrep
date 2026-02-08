@@ -31,29 +31,35 @@ export default function CompanyDetailPage() {
         const response = await companyApi.get(slug);
         let comp = response.company;
         console.log(`✅ [Company Page] Fetched company:`, comp);
+        console.log(`   - Has careerFairCard: ${!!comp.careerFairCard}`);
+        console.log(`   - Match score: ${comp.matchScore}`);
         setCompany(comp);
 
-        // ALWAYS generate fresh pitch when visiting company page
-        console.log(`🚀 [Company Page] Generating fresh pitch for ${comp.name} (id: ${comp.id})`);
-        setGenerating(true);
-        try {
-          // Pass companyId so it saves to MongoDB
-          const result = await pitchApi.generate(comp.name, comp.id);
-          comp = {
-            ...comp,
-            careerFairCard: result.careerFairCard,
-            matchScore: result.matchScore,
-            matchReasoning: result.matchReasoning,
-            generated: true,
-          };
-          setCompany(comp);
-          console.log("✅ Pitch generated and saved:", result);
-        } catch (genErr: any) {
-          console.error("❌ Pitch generation error:", genErr);
-          setError(genErr.message || "Failed to generate pitch. Please complete your profile first.");
-          // Not fatal — page still shows company info without AI content
-        } finally {
-          setGenerating(false);
+        // Only generate if NOT already generated
+        if (!comp.careerFairCard) {
+          console.log(`🚀 [Company Page] No careerFairCard found - generating fresh pitch for ${comp.name} (id: ${comp.id})`);
+          setGenerating(true);
+          try {
+            // Pass companyId so it saves to MongoDB
+            const result = await pitchApi.generate(comp.name, comp.id);
+            comp = {
+              ...comp,
+              careerFairCard: result.careerFairCard,
+              matchScore: result.matchScore,
+              matchReasoning: result.matchReasoning,
+              generated: true,
+            };
+            setCompany(comp);
+            console.log("✅ Pitch generated and saved:", result);
+          } catch (genErr: any) {
+            console.error("❌ Pitch generation error:", genErr);
+            setError(genErr.message || "Failed to generate pitch. Please complete your profile first.");
+            // Not fatal — page still shows company info without AI content
+          } finally {
+            setGenerating(false);
+          }
+        } else {
+          console.log(`✓ Using existing careerFairCard from database`);
         }
       } catch (err) {
         console.error("Error fetching company:", err);
@@ -179,7 +185,7 @@ export default function CompanyDetailPage() {
         <Card className="mb-8 bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-100">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-lg font-bold">
-              {company.matchScore}%
+              {Math.round((company.matchScore / 120) * 100)}%
             </div>
             <div className="flex-1">
               <h3 className="text-sm font-semibold text-foreground mb-2">

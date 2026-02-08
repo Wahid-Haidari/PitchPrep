@@ -12,7 +12,7 @@ import Button from "@/components/ui/Button";
 export default function UserDashboardPage() {
   const router = useRouter();
   const { isAuthenticated, user, isLoading } = useAuth();
-  const { events, getEventCompanies } = useCompanyStore();
+  const { events, getEventCompanies, refreshCompanies } = useCompanyStore();
 
   // Auth guard
   useEffect(() => {
@@ -20,6 +20,11 @@ export default function UserDashboardPage() {
       router.push("/login");
     }
   }, [isLoading, isAuthenticated, router]);
+
+  // Refresh companies when dashboard loads to get latest matchScore from MongoDB
+  useEffect(() => {
+    refreshCompanies();
+  }, [refreshCompanies]);
 
   if (isLoading) {
     return (

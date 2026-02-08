@@ -33,7 +33,13 @@ export async function POST(req: NextRequest) {
       .collection(Collections.USERS)
       .findOne({ _id: new ObjectId(authUser.userId) });
 
+    console.log(`👤 User found: ${!!user}, Has profile: ${!!user?.profile}`);
+    if (user?.profile) {
+      console.log(`   Profile fields: school=${!!user.profile.school}, major=${!!user.profile.major}, skills=${user.profile.skills?.length || 0}`);
+    }
+
     if (!user || !user.profile) {
+      console.error(`❌ Profile validation failed - user: ${!!user}, profile: ${!!user?.profile}`);
       return NextResponse.json(
         { error: "Please complete your profile before generating a pitch" },
         { status: 400 }
@@ -108,15 +114,31 @@ export async function POST(req: NextRequest) {
       console.log(`✅ Company update result: matched=${updateResult.matchedCount}, modified=${updateResult.modifiedCount}`);
     }
 
-    // 5. Save pitch record for history
-    await db.collection(Collections.PITCHES).insertOne({
-      userId: authUser.userId,
-      companyName,
-      companyId: companyId || null,
-      pitchResult,
-      careerFairCard,
-      createdAt: new Date(),
-    });
+    // 5. Save/update pitch record for history (one per user-company combination)
+    console.log(`💾 Upserting pitch record for user ${authUser.userId} + company ${companyId || companyName}`);
+    const pitchUpsertResult = await db.collection(Collections.PITCHES).updateOne(
+      { 
+        userId: authUser.userId,
+        companyId: companyId || companyName // Use companyId if available, otherwise companyName
+      },
+      {
+        $set: {
+          userId: authUser.userId,
+          companyName,
+          companyId: companyId || null,
+          pitchResult,
+          careerFairCard,
+          matchScore: pitchResult.matchScore,
+          matchReasoning,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: {
+          createdAt: new Date(),
+        }
+      },
+      { upsert: true } // Create if doesn't exist, update if exists
+    );
+    console.log(`✅ Pitch record ${pitchUpsertResult.upsertedId ? 'created' : 'updated'} successfully`);
 
     return NextResponse.json({
       careerFairCard,

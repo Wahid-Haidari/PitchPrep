@@ -12,6 +12,7 @@ interface CompanyStoreContextType {
   updateCareerFairCompany: (id: string, updates: Partial<Company>) => void;
   removeCareerFairCompany: (id: string) => void;
   bulkAddCareerFairCompanies: (companies: Company[]) => void;
+  refreshCompanies: () => Promise<void>;
 
   /** Events */
   events: CareerFairEvent[];
@@ -49,6 +50,19 @@ export function CompanyStoreProvider({ children }: { children: React.ReactNode }
       }
     }
     loadData();
+  }, []);
+
+  // Refresh companies from API (to get updated matchScore after generation)
+  const refreshCompanies = useCallback(async () => {
+    try {
+      const companiesRes = await companyApi.list();
+      if (companiesRes?.companies?.length) {
+        console.log('🔄 Refreshed companies from API:', companiesRes.companies.length);
+        setCareerFairCompanies(companiesRes.companies);
+      }
+    } catch (error) {
+      console.error('Failed to refresh companies:', error);
+    }
   }, []);
 
   // Company CRUD — optimistic local update + fire-and-forget API sync
@@ -142,6 +156,7 @@ export function CompanyStoreProvider({ children }: { children: React.ReactNode }
         updateCareerFairCompany,
         removeCareerFairCompany,
         bulkAddCareerFairCompanies,
+        refreshCompanies,
         events,
         addEvent,
         updateEvent,

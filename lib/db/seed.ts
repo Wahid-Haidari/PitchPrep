@@ -64,14 +64,18 @@ async function seed() {
   const companiesCol = db.collection("companies");
   await companiesCol.deleteMany({});
 
-  const companyDocs = mockCompanies.map((c) => ({
-    ...c,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  }));
+  const companyDocs = mockCompanies.map((c) => {
+    // Remove AI-generated fields - these should be generated on-demand per user
+    const { careerFairCard, matchScore, matchReasoning, generated, ...companyData } = c as any;
+    return {
+      ...companyData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  });
 
   await companiesCol.insertMany(companyDocs);
-  console.log(`✓ ${companyDocs.length} companies seeded`);
+  console.log(`✓ ${companyDocs.length} companies seeded (without AI data)`);
 
   // --- Events ---
   const eventsCol = db.collection("events");
@@ -92,11 +96,28 @@ async function seed() {
   // Will be populated on first API call per employer
   console.log("✓ Employer contexts collection ready (empty cache)");
 
+  // --- Pitches (one per user-company combo) ---
+  const pitchesCol = db.collection("pitches");
+  // Don't delete existing pitches on seed
+  console.log("✓ Pitches collection ready");
+
   // --- Create indexes ---
   await usersCol.createIndex({ email: 1 }, { unique: true });
   await companiesCol.createIndex({ slug: 1 }, { unique: true });
   await contextsCol.createIndex({ companyName: 1 }, { unique: true });
   await contextsCol.createIndex({ updatedAt: 1 });
+  
+  // Compound unique index for pitches: one pitch per user-company combination
+  await pitchesCol.createIndex(
+    { userId: 1, companyId: 1 }, 
+    { 
+      unique: true,
+      partialFilterExpression: { companyId: { $type: "string" } } // Only enforce for non-null companyId
+    }
+  );
+  await pitchesCol.createIndex({ userId: 1 }); // Query by user
+  await pitchesCol.createIndex({ updatedAt: -1 }); // Sort by most recent
+  
   console.log("✓ Indexes created");
 
   await client.close();
