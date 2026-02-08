@@ -69,10 +69,10 @@ export const authApi = {
     return data;
   },
 
-  async register(email: string, password: string, name: string): Promise<LoginResponse> {
+  async register(email: string, password: string, name: string, school: string): Promise<LoginResponse> {
     const data = await apiFetch<LoginResponse>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ email, password, name, school }),
     });
     setToken(data.token);
     return data;

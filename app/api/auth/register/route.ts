@@ -5,7 +5,7 @@ import type { UserRole } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, name, role } = await req.json();
+    const { email, password, name, role, school } = await req.json();
 
     if (!email || !password || !name) {
       return NextResponse.json(
@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
     const result = await db.collection(Collections.USERS).insertOne({
       email,
       name,
+      school: school || null,
       role: userRole,
       passwordHash,
       profile: null,

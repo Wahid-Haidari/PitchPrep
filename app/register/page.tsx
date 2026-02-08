@@ -13,6 +13,7 @@ export default function RegisterPage() {
   const { register, isAuthenticated, user } = useAuth();
 
   const [name, setName] = useState("");
+  const [school, setSchool] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -31,7 +32,7 @@ export default function RegisterPage() {
     setError("");
 
     // Validation
-    if (!name || !email || !password || !confirmPassword) {
+    if (!name || !school || !email || !password || !confirmPassword) {
       setError("Please fill in all fields");
       return;
     }
@@ -48,7 +49,7 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    const result = await register(email, password, name);
+    const result = await register(email, password, name, school);
     setLoading(false);
 
     if (result.success) {
@@ -79,6 +80,14 @@ export default function RegisterPage() {
               placeholder="John Doe"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              required
+            />
+            <Input
+              label="Name of School"
+              type="text"
+              placeholder="e.g., University of Oklahoma"
+              value={school}
+              onChange={(e) => setSchool(e.target.value)}
               required
             />
             <Input
